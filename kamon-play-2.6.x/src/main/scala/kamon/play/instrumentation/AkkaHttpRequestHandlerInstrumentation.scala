@@ -31,6 +31,8 @@ object AkkaHttpRequestHandlerInstrumentation {
     override val method: String = request.method.value
     override val url: String = request.getUri.toString
     override val component: String = "play.server.akka-http"
+    override def read(header: String): Option[String] = getHeader(header)
+    override def readAll(): Map[String, String] = request.headers.map(h => (h.name() -> h.value())).toMap
   }
 
   case class AkkaHttpGenericResponse(response: HttpResponse) extends GenericResponse {

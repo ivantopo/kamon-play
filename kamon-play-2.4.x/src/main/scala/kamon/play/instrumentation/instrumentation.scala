@@ -16,9 +16,11 @@
 package kamon.play
 
 import kamon.Kamon
-import kamon.context.{Context, TextMap}
+import kamon.context.{Context, HttpPropagation}
 import org.jboss.netty.handler.codec.http.{HttpRequest, HttpResponse}
 import play.api.libs.ws.WSRequest
+
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 
 package object instrumentation {
 
@@ -44,20 +46,27 @@ package object instrumentation {
       obj.isInstanceOf[HttpResponse]
   }
 
-  def encodeContext(ctx:Context, request:WSRequest): WSRequest = {
-    val textMap = Kamon.contextCodec().HttpHeaders.encode(ctx)
-    request.withHeaders(textMap.values.toSeq: _*)
+  def encodeContext(ctx: Context, request: WSRequest): WSRequest = {
+    var newHeaders: Seq[(String, String)] = Seq.empty
+    val headerWriter = new HttpPropagation.HeaderWriter {
+      override def write(header: String, value: String): Unit =
+        newHeaders = (header -> value) +: newHeaders
+    }
+
+    Kamon.defaultHttpPropagation().write(ctx, headerWriter)
+    request.withHeaders(newHeaders: _*)
   }
 
   def decodeContext(request: HttpRequest): Context = {
-    val headersTextMap = readOnlyTextMapFromHeaders(request)
-    Kamon.contextCodec().HttpHeaders.decode(headersTextMap)
-  }
+    val headerReader = new HttpPropagation.HeaderReader {
+      override def read(header: String): Option[String] =
+        Option(request.headers().get(header))
 
-  private def readOnlyTextMapFromHeaders(request: HttpRequest): TextMap = new TextMap {
-    override def values: Iterator[(String, String)] = Iterator.empty
-    override def get(key: String): Option[String] = Option(request.headers().get(key))
-    override def put(key: String, value: String): Unit = {}
+      override def readAll(): Map[String, String] =
+        request.headers().entries().asScala.map(e => (e.getKey, e.getValue)).toMap
+    }
+
+    Kamon.defaultHttpPropagation().read(headerReader)
   }
 
   def isError(statusCode: Int): Boolean =

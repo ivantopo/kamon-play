@@ -22,6 +22,7 @@ import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation._
 import play.api.mvc.EssentialFilter
 
+import scala.collection.JavaConverters.iterableAsScalaIterableConverter
 import scala.concurrent.Future
 
 object NettyRequestHandlerInstrumentation {
@@ -31,6 +32,9 @@ object NettyRequestHandlerInstrumentation {
     override val method: String = request.method().name()
     override val url: String = request.uri()
     override val component = "play.server.netty"
+    override def read(header: String): Option[String] = getHeader(header)
+    override def readAll(): Map[String, String] =
+      request.headers().entries().asScala.map(e => (e.getKey() -> e.getValue())).toMap
   }
 
   case class NettyGenericResponse(response: HttpResponse) extends GenericResponse {

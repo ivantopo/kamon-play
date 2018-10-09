@@ -16,10 +16,8 @@
 package kamon.play
 
 import javax.inject.Inject
-
 import kamon.Kamon
-import kamon.context.Context.create
-import kamon.context.Key
+import kamon.context.Context
 import kamon.play.action.OperationName
 import kamon.testkit.MetricInspection
 import kamon.trace.Span
@@ -55,10 +53,10 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
 
   implicit val executor: ExecutionContextExecutor = scala.concurrent.ExecutionContext.Implicits.global
 
-  val requestID = Key.broadcastString("request-id")
+  val requestIDTag = "request-id"
   val withRoutes: PartialFunction[(String, String), Handler] = {
     case ("GET", "/ok") ⇒ Action { Ok }
-    case ("GET", "/request-id") ⇒ Action { Ok(Kamon.currentContext().get(requestID).getOrElse("undefined")) }
+    case ("GET", "/request-id") ⇒ Action { Ok(Kamon.currentContext().getTag(requestIDTag).getOrElse("undefined")) }
     case ("GET", "/async") ⇒ Action.async { Future { Ok } }
     case ("GET", "/not-found") ⇒ Action { NotFound }
     case ("GET", "/renamed") ⇒
@@ -93,7 +91,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val okSpan = Kamon.buildSpan("ok-operation-span").start()
       val endpoint = s"http://localhost:$port/ok"
 
-      Kamon.withContext(create(Span.ContextKey, okSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, okSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }
@@ -130,7 +128,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val okSpan = Kamon.buildSpan("ok-operation-span").start()
       val endpoint = s"http://localhost:$port/request-id"
 
-      Kamon.withContext(create(Span.ContextKey, okSpan).withKey(requestID, Some("123456"))) {
+      Kamon.withContext(Context.of(Span.ContextKey, okSpan).withTag(requestIDTag, "123456")) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
         response.body mustBe "123456"
@@ -142,7 +140,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val asyncSpan = Kamon.buildSpan("async-operation-span").start()
       val endpoint = s"http://localhost:$port/async"
 
-      Kamon.withContext(create(Span.ContextKey, asyncSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, asyncSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }
@@ -161,7 +159,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val notFoundSpan = Kamon.buildSpan("not-found-operation-span").start()
       val endpoint = s"http://localhost:$port/not-found"
 
-      Kamon.withContext(create(Span.ContextKey, notFoundSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, notFoundSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 404
       }
@@ -180,7 +178,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val renamedSpan = Kamon.buildSpan("renamed-operation-span").start()
       val endpoint = s"http://localhost:$port/renamed"
 
-      Kamon.withContext(create(Span.ContextKey, renamedSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, renamedSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }
@@ -200,7 +198,7 @@ class RequestHandlerInstrumentationSpec extends PlaySpec with GuiceOneServerPerS
       val errorSpan = Kamon.buildSpan("error-operation-span").start()
       val endpoint = s"http://localhost:$port/error"
 
-      Kamon.withContext(create(Span.ContextKey, errorSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, errorSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 500
       }

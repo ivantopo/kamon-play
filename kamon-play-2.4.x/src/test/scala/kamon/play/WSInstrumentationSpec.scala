@@ -19,7 +19,6 @@ import java.net.ConnectException
 
 import kamon.Kamon
 import kamon.context.Context
-import kamon.context.Context.create
 import kamon.trace.Span.TagValue
 import kamon.trace.{Span, SpanCustomizer}
 import org.scalatest.concurrent.Eventually
@@ -65,7 +64,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val okSpan = Kamon.buildSpan("ok-operation-span").start()
       val endpoint = s"http://localhost:$port/ok"
 
-      Kamon.withContext(create(Span.ContextKey, okSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, okSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }
@@ -84,7 +83,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val insideSpan = Kamon.buildSpan("inside-controller-operation-span").start()
       val endpoint = s"http://localhost:$port/inside-controller"
 
-      Kamon.withContext(create(Span.ContextKey, insideSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, insideSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }
@@ -103,7 +102,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val notFoundSpan = Kamon.buildSpan("not-found-operation-span").start()
       val endpoint = s"http://localhost:$port/not-found"
 
-      Kamon.withContext(create(Span.ContextKey, notFoundSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, notFoundSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 404
       }
@@ -122,7 +121,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val errorSpan = Kamon.buildSpan("error-operation-span").start()
       val endpoint = s"http://localhost:$port/error"
 
-      Kamon.withContext(create(Span.ContextKey, errorSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, errorSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 500
       }
@@ -143,7 +142,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val endpoint = s"http://localhost:1000/throw-exception"
 
       intercept[ConnectException] {
-        Kamon.withContext(create(Span.ContextKey, errorSpan)) {
+        Kamon.withContext(Context.of(Span.ContextKey, errorSpan)) {
           val response = await(wsClient.url(endpoint).get())
           response.status mustBe 500
         }
@@ -166,7 +165,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val customizedOperationName = "customized-operation-name"
       val endpoint = s"http://localhost:$port/ok"
 
-      val context = Context.create(Span.ContextKey, okSpan)
+      val context = Context.of(Span.ContextKey, okSpan)
         .withKey(SpanCustomizer.ContextKey, SpanCustomizer.forOperationName(customizedOperationName))
 
       Kamon.withContext(context) {
@@ -188,7 +187,7 @@ class WSInstrumentationSpec extends PlaySpec with OneServerPerSuite
       val okSpan = Kamon.buildSpan("ok-operation-span").start()
       val endpoint = s"http://localhost:$port/ok"
 
-      Kamon.withContext(create(Span.ContextKey, okSpan)) {
+      Kamon.withContext(Context.of(Span.ContextKey, okSpan)) {
         val response = await(wsClient.url(endpoint).get())
         response.status mustBe 200
       }

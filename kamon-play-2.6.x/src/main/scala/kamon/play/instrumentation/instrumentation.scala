@@ -16,25 +16,24 @@
 package kamon.play
 
 import kamon.Kamon
-import kamon.context.{Context, TextMap}
+import kamon.context.{Context, HttpPropagation}
 import play.api.libs.ws.StandaloneWSRequest
 
 package object instrumentation {
 
-  def encodeContext(ctx:Context, request:StandaloneWSRequest): StandaloneWSRequest = {
-    val textMap = Kamon.contextCodec().HttpHeaders.encode(ctx)
-    request.addHttpHeaders(textMap.values.toSeq: _*)
+  def encodeContext(ctx:Context, request: StandaloneWSRequest): StandaloneWSRequest = {
+    var newHeaders: Seq[(String, String)] = Seq.empty
+    val headerWriter = new HttpPropagation.HeaderWriter {
+      override def write(header: String, value: String): Unit =
+        newHeaders = (header -> value) +: newHeaders
+    }
+
+    Kamon.defaultHttpPropagation().write(ctx, headerWriter)
+    request.addHttpHeaders(newHeaders: _*)
   }
 
-  def context(request: GenericRequest): Context = {
-    val headersTextMap = readOnlyTextMapFromHeaders(request)
-    Kamon.contextCodec().HttpHeaders.decode(headersTextMap)
-  }
-
-  private def readOnlyTextMapFromHeaders(request: GenericRequest): TextMap = new TextMap {
-    override def values: Iterator[(String, String)] = Iterator.empty
-    override def get(key: String): Option[String] = request.getHeader(key)
-    override def put(key: String, value: String): Unit = {}
+  def decodeContext(request: HttpPropagation.HeaderReader): Context = {
+    Kamon.defaultHttpPropagation().read(request)
   }
 
   def isError(statusCode: Int): Boolean =

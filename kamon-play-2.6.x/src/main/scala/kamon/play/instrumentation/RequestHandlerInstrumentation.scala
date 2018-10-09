@@ -16,13 +16,13 @@
 package kamon.play.instrumentation
 
 import kamon.Kamon
-import kamon.context.Context
+import kamon.context.{Context, HttpPropagation}
 import kamon.trace.Span
 import kamon.util.CallingThreadExecutionContext
 
 import scala.concurrent.Future
 
-trait GenericRequest {
+trait GenericRequest extends HttpPropagation.HeaderReader {
   val getHeader: String => Option[String]
   val method: String
   val url: String
@@ -41,7 +41,7 @@ trait GenericResponseBuilder[T] {
 object RequestHandlerInstrumentation {
 
   def handleRequest[T](responseInvocation: => Future[T], request: GenericRequest)(implicit builder: GenericResponseBuilder[T]): Future[T] = {
-    val incomingContext = context(request)
+    val incomingContext = decodeContext(request)
     val serverSpan = Kamon.buildSpan("unknown-operation")
       .asChildOf(incomingContext.get(Span.ContextKey))
       .withMetricTag("span.kind", "server")

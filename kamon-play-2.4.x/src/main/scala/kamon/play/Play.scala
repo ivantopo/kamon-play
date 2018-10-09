@@ -38,10 +38,7 @@ object Play {
     nameGenerator =  dynamic.createInstanceFor[NameGenerator](nameGeneratorFQCN, Nil).get
   }
 
-  Kamon.onReconfigure(new OnReconfigureHook {
-    override def onReconfigure(newConfig: Config): Unit =
-      Play.loadConfiguration(newConfig)
-  })
+  Kamon.onReconfigure(newConfig => Play.loadConfiguration(newConfig))
 }
 
 trait NameGenerator {
